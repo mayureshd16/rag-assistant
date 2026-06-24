@@ -1,3 +1,17 @@
+# FROM node:24
+
+# WORKDIR /app
+
+# COPY package*.json ./
+
+# RUN npm install
+
+# COPY . .
+
+# EXPOSE 5173
+
+# CMD ["npm", "run", "dev", "--", "--host"]
+
 FROM node:24
 
 WORKDIR /app
@@ -8,6 +22,10 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 5173
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host"]
+RUN npm install -g serve
+
+EXPOSE 3000
+
+CMD ["serve", "-s", "dist", "-l", "3000"]
