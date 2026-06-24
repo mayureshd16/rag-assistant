@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Chroma
+chroma_db/
+
+# React
+node_modules/
+dist/
+
+# VS Code
+.vscode/
+
+# Docker
+*.log
