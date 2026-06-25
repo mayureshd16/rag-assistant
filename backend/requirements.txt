@@ -1,10 +1,25 @@
+# fastapi
+# uvicorn
+# langchain==0.1.20
+# langchain-community==0.0.38
+# langchain-groq==0.1.5
+# langchain-text-splitters==0.0.2
+# chromadb
+# sentence-transformers
+# pypdf
+# python-multipart
 fastapi
 uvicorn
 langchain==0.1.20
 langchain-community==0.0.38
-langchain-groq==0.1.5
-langchain-text-splitters==0.0.2
+langchain-openai==0.1.7
+langchain-groq
 chromadb
 sentence-transformers
 pypdf
 python-multipart
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
