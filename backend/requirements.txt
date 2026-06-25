@@ -15,7 +15,8 @@ langchain-community==0.0.38
 langchain-openai==0.1.7
 langchain-groq
 chromadb
-sentence-transformers
+# sentence-transformers
+fastembed
 pypdf
 python-multipart
 

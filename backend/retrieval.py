@@ -2,9 +2,14 @@ from langchain_groq import ChatGroq
 import os
 
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+# from langchain_community.embeddings import HuggingFaceEmbeddings
 
-EMBED_MODEL = HuggingFaceEmbeddings(
+# EMBED_MODEL = HuggingFaceEmbeddings(
+#     model_name="BAAI/bge-small-en-v1.5"
+# )
+from langchain_community.embeddings import FastEmbedEmbeddings
+
+EMBED_MODEL = FastEmbedEmbeddings(
     model_name="BAAI/bge-small-en-v1.5"
 )
 
