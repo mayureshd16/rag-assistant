@@ -1,6 +1,9 @@
 import { useState } from "react";
 import axios from "axios";
 
+const API = "https://rag-assistant-production-39e2.up.railway.app";
+
+
 function App() {
   const [file, setFile] = useState(null);
   const [question, setQuestion] = useState("");
@@ -17,7 +20,7 @@ function App() {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/upload",
+        `${API}/upload`,
         formData
       );
 
@@ -31,11 +34,11 @@ function App() {
   const askQuestion = async () => {
     try {
       const response = await axios.post(
-        "http://localhost:8000/query",
+        `${API}/query`,
         {
           questions: question
-            .split("\n")
-            .filter((q) => q.trim() !== "")
+          .split("\n")
+          .filter(q => q.trim() !== "")
         }
       );
 
