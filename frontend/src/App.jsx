@@ -1,7 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 
-const API = "https://rag-assistant-production-39e2.up.railway.app";
+// const API = "https://rag-assistant-production-39e2.up.railway.app";
+const API = import.meta.env.VITE_API_URL;
 
 
 function App() {
@@ -9,25 +10,46 @@ function App() {
   const [question, setQuestion] = useState("");
   const [answers, setAnswers] = useState([]);
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
   const uploadFile = async () => {
+
     if (!file) {
-      alert("Please select a file");
-      return;
+        alert("Please select a file.");
+        return;
     }
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await axios.post(
-        `${API}/upload`,
-        formData
-      );
 
-      alert(`File uploaded successfully: ${response.data.filename}`);
-    } catch (error) {
-      console.error(error);
-      alert("Upload failed");
+        setUploading(true);
+        setUploadSuccess(false);
+
+        const response = await axios.post(
+            `${API}/upload`,
+            formData
+        );
+
+        console.log(response.data);
+
+        setUploadSuccess(true);
+        setFile(null);
+
+    }
+    catch (error) {
+
+        console.error(error);
+
+        alert("Upload Failed");
+
+    }
+    finally {
+
+        setUploading(false);
+
     }
   };
 
@@ -61,11 +83,32 @@ function App() {
       />
 
       <button
-        onClick={uploadFile}
-        style={{ marginLeft: "10px" }}
+      onClick={uploadFile}
+      style={{ marginLeft: "10px" }}
+      disabled={uploading}
       >
-        Upload
+        {
+          uploading
+          ? "Uploading..."
+          : "Upload"
+        }
       </button>
+
+      {
+        uploadSuccess &&
+        (
+          <p
+            style={{
+                color: "limegreen",
+                fontWeight: "bold",
+                marginTop: "10px"
+            }}
+          >
+            ✅ Upload completed successfully!
+          </p>
+        )
+      }
+      
 
       <hr />
 
