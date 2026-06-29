@@ -1,54 +1,194 @@
+import os
+import uuid
+from datetime import datetime
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import FastEmbedEmbeddings
+
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
     Docx2txtLoader
 )
 
-EMBED_MODEL = FastEmbedEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5"
+from config import (
+    CHUNK_SIZE,
+    CHUNK_OVERLAP
 )
 
-CHROMA_PATH = "./chroma_db"
+from database import (
+    add_documents,
+    save_document
+)
 
+LOADERS = {
+
+    ".pdf": PyPDFLoader,
+
+    ".txt": TextLoader,
+
+    ".docx": Docx2txtLoader
+
+}
+
+# ======================================================
+# Load Document
+# ======================================================
+
+# ======================================================
+# Load Document
+# ======================================================
+
+def load_document(file_path: str):
+
+    extension = os.path.splitext(file_path)[1].lower()
+
+    loader_class = LOADERS.get(extension)
+
+    if loader_class is None:
+
+        raise Exception(
+
+            f"Unsupported file type: {extension}"
+
+        )
+
+    loader = loader_class(file_path)
+
+    return loader.load()
+
+
+# ======================================================
+# Add Metadata
+# ======================================================
+
+def enrich_metadata(
+
+    docs,
+
+    filename,
+
+    document_id,
+
+    uploaded_at
+
+):
+
+    for doc in docs:
+
+        doc.metadata["document_id"] = document_id
+
+        doc.metadata["filename"] = filename
+
+        doc.metadata["uploaded_at"] = uploaded_at
+
+        if "page" not in doc.metadata:
+
+            doc.metadata["page"] = 1
+
+    return docs
+
+
+# ======================================================
+# Split Documents
+# ======================================================
+
+def split_documents(docs):
+
+    splitter = RecursiveCharacterTextSplitter(
+
+        chunk_size=CHUNK_SIZE,
+
+        chunk_overlap=CHUNK_OVERLAP
+
+    )
+
+    return splitter.split_documents(docs)
+
+
+# ======================================================
+# Ingest File
+# ======================================================
 
 def ingest_file(file_path: str):
 
-    # Select the correct loader based on file extension
-    if file_path.lower().endswith(".pdf"):
-        loader = PyPDFLoader(file_path)
+    print("=" * 60)
 
-    elif file_path.lower().endswith(".txt"):
-        loader = TextLoader(file_path)
+    print("Starting document ingestion...")
 
-    elif file_path.lower().endswith(".docx"):
-        loader = Docx2txtLoader(file_path)
+    filename = os.path.basename(file_path)
 
-    else:
-        raise Exception(
-            f"Unsupported file type: {file_path}"
-        )
+    document_id = str(uuid.uuid4())
 
-    # Load document
-    docs = loader.load()
+    uploaded_at = datetime.now().strftime(
 
-    # Split into chunks
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+        "%Y-%m-%d %H:%M:%S"
+
     )
 
-    chunks = splitter.split_documents(docs)
+    # ------------------------------
+    # Load
+    # ------------------------------
 
+    docs = load_document(file_path)
+
+    print(f"Loaded {len(docs)} page(s).")
+
+    # ------------------------------
+    # Metadata
+    # ------------------------------
+
+    docs = enrich_metadata(
+
+        docs,
+
+        filename,
+
+        document_id,
+
+        uploaded_at
+
+    )
+
+    # ------------------------------
+    # Split
+    # ------------------------------
+
+    chunks = split_documents(docs)
+
+    print(f"Created {len(chunks)} chunks.")
+
+    # ------------------------------
     # Store in Chroma
-    db = Chroma(
-        persist_directory=CHROMA_PATH,
-        embedding_function=EMBED_MODEL
-    )
+    # ------------------------------
 
-    db.add_documents(chunks)
-    db.persist()
+    add_documents(chunks)
 
-    return True
+    # ------------------------------
+    # Save Metadata
+    # ------------------------------
+
+    save_document({
+
+        "document_id": document_id,
+
+        "filename": filename,
+
+        "uploaded_at": uploaded_at
+
+    })
+
+    print("Document ingested successfully.")
+
+    print("=" * 60)
+
+    return {
+
+        "document_id": document_id,
+
+        "filename": filename,
+
+        "uploaded_at": uploaded_at,
+
+        "chunks": len(chunks)
+
+    }

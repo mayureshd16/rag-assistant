@@ -1,65 +1,72 @@
-from langchain_groq import ChatGroq
-import os
+from llm import get_llm
+from database import similarity_search
+from prompts import build_prompt
 
-from langchain_community.vectorstores import Chroma
-# from langchain_community.embeddings import HuggingFaceEmbeddings
 
-# EMBED_MODEL = HuggingFaceEmbeddings(
-#     model_name="BAAI/bge-small-en-v1.5"
-# )
-from langchain_community.embeddings import FastEmbedEmbeddings
+# ======================================================
+# Retrieve Context
+# ======================================================
 
-EMBED_MODEL = FastEmbedEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5"
-)
+def retrieve_context(question: str):
 
-def answer_query(question: str) -> str:
-    db = Chroma(
-        persist_directory="./chroma_db",
-        embedding_function=EMBED_MODEL
+    docs = similarity_search(question)
+
+    context = "\n\n".join(
+
+        doc.page_content
+
+        for doc in docs
+
     )
 
-    docs = db.similarity_search(question, k=4)
+    return context, docs
 
-    context = "\n\n".join([doc.page_content for doc in docs])
 
-    llm = ChatGroq(
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-        model_name="openai/gpt-oss-120b",
-        temperature=0
+# ======================================================
+# Generate Answer
+# ======================================================
+
+def generate_answer(question: str):
+
+    context, docs = retrieve_context(question)
+
+    llm = get_llm()
+
+    prompt = build_prompt(
+
+        question=question,
+
+        context=context
+
     )
 
-    response = llm.invoke(
-        f"""
-        Answer the question using only the context below.
+    response = llm.invoke(prompt)
 
-        Context:
-        {context}
+    return {
 
-        Question:
-        {question}
-        """
-    )
+        "answer": response.content,
 
-    return response.content
+        "sources": [
 
-# from langchain_community.vectorstores import Chroma
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-# from langchain.chains import RetrievalQA
-# # from langchain_openai import ChatOpenAI
-# from langchain_groq import ChatGroq
-# import os
+            {
 
-# EMBED_MODEL = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+                "content": doc.page_content,
 
-# def answer_query(question: str) -> str:
-#     db = Chroma(persist_directory="./chroma_db", embedding_function=EMBED_MODEL)
-#     retriever = db.as_retriever(search_kwargs={"k": 4})
-#     # llm = ChatOpenAI(model="gpt-4.1", temperature=0)
-#     llm = ChatGroq(
-#     groq_api_key=os.getenv("GROQ_API_KEY"),
-#     model_name="llama-3.3-70b-versatile",
-#     temperature=0
-#     )
-#     chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
-#     return chain.invoke({"query": question})["result"]
+                "metadata": doc.metadata
+
+            }
+
+            for doc in docs
+
+        ]
+
+    }
+
+
+# ======================================================
+# Public API
+# ======================================================
+
+def answer_query(question: str):
+
+    return generate_answer(question)

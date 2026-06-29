@@ -1,281 +1,309 @@
-import { useState } from "react";
-import axios from "axios";
+import { useMemo, useState } from "react";
+
+import {
+    Box,
+    Paper,
+    Typography
+} from "@mui/material";
+
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+
+import { getTheme } from "./theme/theme";
+
 import "./App.css";
 
-const API = import.meta.env.VITE_API_URL;
+import Sidebar from "./components/layout/Sidebar";
+import ChatHistory from "./components/chat/ChatHistory";
+import ChatInput from "./components/input/ChatInput";
+
+import useRagAssistant from "./hooks/useRagAssistant";
 
 function App() {
 
-  const [file, setFile] = useState(null);
-  const [question, setQuestion] = useState("");
-  const [answers, setAnswers] = useState([]);
+    // ==================================================
+    // Theme
+    // ==================================================
 
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
+    const [mode, setMode] = useState("light");
 
-  // ---------------- Upload ----------------
+    const theme = useMemo(
 
-  const uploadFile = async () => {
+        () => getTheme(mode),
 
-    if (!file) {
-      alert("Please select a file.");
-      return;
-    }
+        [mode]
 
-    const formData = new FormData();
-    formData.append("file", file);
+    );
 
-    try {
+    // ==================================================
+    // Question (UI State)
+    // ==================================================
 
-      setUploading(true);
-      setUploadSuccess(false);
+    const [
 
-      const response = await axios.post(
-        `${API}/upload`,
-        formData
-      );
+        question,
 
-      console.log(response.data);
+        setQuestion
 
-      setUploadSuccess(true);
-      setFile(null);
+    ] = useState("");
 
-    }
-    catch (error) {
+    // ==================================================
+    // Hook
+    // ==================================================
 
-      console.error(error);
+    const {
 
-      alert("Upload Failed");
+        // Documents
 
-    }
-    finally {
+        file,
 
-      setUploading(false);
+        setFile,
 
-    }
-  };
+        documents,
 
-  // ---------------- Questions ----------------
+        uploadFile,
 
-  const askQuestion = async () => {
+        uploading,
 
-    const questions = question
-      .split("\n")
-      .filter(q => q.trim() !== "");
+        uploadSuccess,
 
-    if (questions.length === 0) {
+        // Conversation
 
-      alert("Please enter at least one question.");
-      return;
+        conversations,
 
-    }
+        selectedConversation,
 
-    try {
+        setSelectedConversation,
 
-      setLoading(true);
+        createConversation,
 
-      const response = await axios.post(
-        `${API}/query`,
-        {
-          questions
-        }
-      );
+        deleteConversation,
 
-      setAnswers(response.data.answers);
+        renameConversation,
 
-    }
-    catch (error) {
+        togglePinConversation,
 
-      console.error(error);
+        // Streaming
 
-      alert("Failed to get answer.");
+        askQuestion,
 
-    }
-    finally {
+        isStreaming,
 
-      setLoading(false);
+        stopGeneration,
 
-    }
+        status
 
-  };
+    } = useRagAssistant();
 
-  return (
+    // ==================================================
+    // Current Conversation
+    // ==================================================
 
-    <div
-      style={{
-        padding: "20px",
-        maxWidth: "900px",
-        margin: "auto"
-      }}
-    >
+    const currentConversation =
 
-      <h1>Multi-Document RAG Assistant</h1>
+        conversations.find(
 
-      {/* ---------------- Upload ---------------- */}
+            conversation =>
 
-      <h3>Upload Document</h3>
+                conversation.id ===
 
-      <input
-        type="file"
-        onChange={(e) => setFile(e.target.files[0])}
-      />
+                selectedConversation
 
-      <button
-        onClick={uploadFile}
-        style={{ marginLeft: "10px" }}
-        disabled={uploading || loading}
-      >
+        );
 
-        {
-          uploading
-            ? "Uploading..."
-            : "Upload"
-        }
+    const currentMessages =
 
-      </button>
+        currentConversation?.messages || [];
 
-      {
+    return (
 
-        uploadSuccess &&
+        <ThemeProvider theme={theme}>
 
-        <p
-          style={{
-            color: "limegreen",
-            fontWeight: "bold"
-          }}
-        >
-          ✅ Upload completed successfully!
-        </p>
+            <CssBaseline />
 
-      }
+            <Box
 
-      <hr />
+                sx={{
 
-      {/* ---------------- Ask Questions ---------------- */}
+                    display: "flex",
 
-      <h3>Ask Questions</h3>
+                    height: "100vh",
 
-      <textarea
+                    bgcolor: "background.default"
 
-        rows="6"
-        cols="80"
-
-        value={question}
-
-        disabled={loading}
-
-        onChange={(e) => setQuestion(e.target.value)}
-
-        placeholder={`Enter one question per line
-
-What are the candidate's technical skills?
-What projects are mentioned in the resume?
-Summarize the candidate's experience.`}
-
-      />
-
-      <br />
-      <br />
-
-      <button
-
-        onClick={askQuestion}
-
-        disabled={loading}
-
-      >
-
-        {
-
-          loading
-
-            ? "Thinking..."
-
-            : "Ask Questions"
-
-        }
-
-      </button>
-
-      {/* ---------- Loading Spinner ---------- */}
-
-      {
-
-        loading &&
-
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "25px"
-          }}
-        >
-
-          <div className="spinner"></div>
-
-          <h3>Thinking...</h3>
-
-          <p>
-            Generating answers from your documents...
-          </p>
-
-        </div>
-
-      }
-
-      <hr />
-
-      {/* ---------------- Answers ---------------- */}
-
-      <h2>Answers</h2>
-
-      {
-
-        answers.length > 0
-
-          ?
-
-          answers.map((item, index) => (
-
-            <div
-
-              key={index}
-
-              style={{
-
-                border: "1px solid #888",
-
-                borderRadius: "8px",
-
-                padding: "15px",
-
-                marginBottom: "20px"
-
-              }}
+                }}
 
             >
 
-              <h4>Question</h4>
+                {/* Sidebar */}
 
-              <p>{item.question}</p>
+                <Sidebar
 
-              <h4>Answer</h4>
+                    conversations={conversations}
 
-              <p>{item.answer}</p>
+                    selectedConversation={selectedConversation}
 
-            </div>
+                    setSelectedConversation={setSelectedConversation}
 
-          ))
+                    createConversation={createConversation}
 
-          :
+                    renameConversation={renameConversation}
 
-          <p>No answers yet.</p>
+                    deleteConversation={deleteConversation}
 
-      }
+                    togglePinConversation={togglePinConversation}
 
-    </div>
+                    mode={mode}
 
-  );
+                    setMode={setMode}
+
+                />
+
+                {/* Main */}
+
+                <Box
+
+                    sx={{
+
+                        flex: 1,
+
+                        display: "flex",
+
+                        flexDirection: "column",
+
+                        overflow: "hidden"
+
+                    }}
+
+                >
+
+                    {/* Header */}
+
+                    <Paper
+
+                        elevation={2}
+
+                        sx={{
+
+                            px: 4,
+
+                            py: 3,
+
+                            borderRadius: 0
+
+                        }}
+
+                    >
+
+                        <Typography
+
+                            variant="h4"
+
+                            fontWeight="bold"
+
+                        >
+
+                            🤖 Multi-Document RAG Assistant
+
+                        </Typography>
+
+                        <Typography
+
+                            color="text.secondary"
+
+                            sx={{
+
+                                mt: 1
+
+                            }}
+
+                        >
+
+                            Chat with your uploaded documents using AI.
+
+                        </Typography>
+
+                    </Paper>
+
+                    {/* Chat */}
+
+                    <Box
+
+                        sx={{
+
+                            flex: 1,
+
+                            overflowY: "auto",
+
+                            px: 4,
+
+                            py: 3,
+
+                            scrollBehavior: "smooth"
+
+                        }}
+
+                    >
+
+                        <ChatHistory
+
+                            chatHistory={currentMessages}
+
+                            loading={isStreaming}
+
+                        />
+
+                    </Box>
+
+                    {/* Input */}
+
+                    <Paper
+
+                        elevation={8}
+
+                        sx={{
+
+                            p: 2,
+
+                            borderTop: "1px solid",
+
+                            borderColor: "divider"
+
+                        }}
+
+                    >
+
+                        <ChatInput
+
+                            question={question}
+
+                            setQuestion={setQuestion}
+
+                            askQuestion={askQuestion}
+
+                            isStreaming={isStreaming}
+
+                            file={file}
+
+                            setFile={setFile}
+
+                            uploadFile={uploadFile}
+
+                            uploading={uploading}
+
+                            uploadSuccess={uploadSuccess}
+
+                        />
+
+                    </Paper>
+
+                </Box>
+
+            </Box>
+
+        </ThemeProvider>
+
+    );
 
 }
 
